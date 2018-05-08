@@ -160,3 +160,33 @@ require()的标识符参数经常会出现不包含文件扩展名的情况，�
 可能按照扩展名依次补足也查找不到对于的文件，但是得到一个目录，Node会将其作为一个包处理。
 
 Node会查找包目录下的package.json，取出其中main属性指定的文件名进行定位(可以不含扩展名，按扩展名分析查找)，如果没有main属性，则默认查找index文件(js,json,node)。
+
+### 4.3 编译执行
+
+#### 4.3.1 Javascript模块的编译
+
+js文件是通过fs模块同步读取文件后编译执行。
+
+每个模块都有require、exports、module、__filename、__dirname变量，但我们并没有定义这些变量，他们是从何而来？
+
+查看Node源码[loader.js](https://github.com/nodejs/node/blob/master/lib/internal/modules/cjs/loader.js)发现，原来Node会将在模块文件的头尾进行包装成一个function，并将相关变量传给这个function执行。
+
+```js
+(function (exports, require, module, __filename, _dirname) {
+    //模块内容
+});
+```
+
+这样就将模块内容进行了封装隔离（作用域隔离），并在模块内能得到相关变量。
+
+模块的exports属性会返回给调用方，对相关变量和方法进行导出。
+
+由于exports属性是形参传递，这也解释了3.3节所讲的，在模块内直接改变exports的值导致导出失败的原因。
+
+#### 4.3.2 C/C++模块的编译
+
+Node通过process.dlopen()加载和执行C/C++模块(实际并不需要编译)，执行过程中使exports与.node模块产生联系，然后返回给调用者。
+
+#### 4.3.3 JSON文件的编译
+
+Node通过fs模块和JSON.parse()方法得到json对象并赋值给exports，在用作项目配置时比较有用，直接调用require即可，不需要再用fs和parse。
